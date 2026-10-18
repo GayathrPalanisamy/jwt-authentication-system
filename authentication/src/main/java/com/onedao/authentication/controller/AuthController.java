@@ -3,6 +3,7 @@ package com.onedao.authentication.controller;
 import com.onedao.authentication.dto.AuthResponse;
 import com.onedao.authentication.dto.LoginRequest;
 import com.onedao.authentication.dto.RegisterRequest;
+import com.onedao.authentication.entity.AppUser;
 import com.onedao.authentication.security.JwtService;
 import com.onedao.authentication.security.TokenRevocationService;
 import com.onedao.authentication.service.AuthService;
@@ -96,7 +97,9 @@ public class AuthController {
             Authentication authentication
     ) {
 
-        String username = authentication.getName();
+        AppUser user = (AppUser) authentication.getPrincipal();
+        String username = user.getUsername();
+       // String username = authentication.getName();
 
         logger.info("Logout request received for username: {}", username);
 
@@ -113,9 +116,10 @@ public class AuthController {
 
         return ResponseEntity.ok(
                 Map.of(
-                        "message",
-                        username + " Logged Out"
+                        "message", "Logout successful",
+                        "username", username
                 )
         );
     }
+
 }

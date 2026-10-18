@@ -7,9 +7,11 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/products")
@@ -79,13 +81,16 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-
-        logger.info("Product deletion request received for ID: {}", id);
+    public ResponseEntity<Map<String, String>> deleteProduct(
+            @PathVariable Long id) {
 
         productService.delete(id);
 
-        logger.info("Product deleted successfully with ID: {}", id);
+        return ResponseEntity.ok(
+                Map.of(
+                        "message", "Product deleted successfully",
+                        "id", id.toString()
+                )
+        );
     }
 }
