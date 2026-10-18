@@ -1,6 +1,8 @@
 package com.onedao.authentication.controller;
 
 import com.onedao.authentication.entity.AppUser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,11 +14,20 @@ import java.util.Map;
 @RequestMapping("/api/dashboard")
 public class DashboardController {
 
+    private static final Logger logger =
+            LoggerFactory.getLogger(DashboardController.class);
+
     @GetMapping
     public Map<String, String> dashboard(
-            Authentication authentication) {
+            Authentication authentication
+    ) {
 
         AppUser user = (AppUser) authentication.getPrincipal();
+
+        logger.info(
+                "Dashboard accessed by username: {}",
+                user.getUsername()
+        );
 
         return Map.of(
                 "message", "Welcome " + user.getUsername()
