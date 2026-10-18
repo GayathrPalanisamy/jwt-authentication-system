@@ -1,4 +1,3 @@
-
 package com.onedao.authentication.security;
 
 import com.onedao.authentication.entity.AppUser;
@@ -8,6 +7,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,6 +22,9 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final Logger logger =
+            LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final TokenRevocationService tokenRevocationService;
@@ -29,6 +33,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             JwtService jwtService,
             UserRepository userRepository,
             TokenRevocationService tokenRevocationService) {
+
         this.jwtService = jwtService;
         this.userRepository = userRepository;
         this.tokenRevocationService = tokenRevocationService;
@@ -41,24 +46,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        System.out.println("JWT FILTER REQUEST: "
-                + request.getMethod() + " " + request.getRequestURI());
-
-        response.setHeader("X-Debug-Backend", "jwt-filter-v1");
+        logger.debug(
+                "JWT filter processing {} {}",
+                request.getMethod(),
+                request.getRequestURI()
+        );
 
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        System.out.println("Bearer token present: "
-                + (header != null && header.startsWith("Bearer ")));
-
         try {
             if (header != null && header.startsWith("Bearer ")) {
+
                 String token = header.substring(7);
 
                 boolean valid = jwtService.isTokenValid(token);
-                System.out.println("JWT valid: " + valid);
 
                 if (!valid) {
+                    logger.warn("JWT validation failed");
                     sendUnauthorized(response);
                     return;
                 }
@@ -66,7 +70,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String tokenId = jwtService.extractTokenId(token);
 
                 if (tokenRevocationService.isRevoked(tokenId)) {
-                    System.out.println("JWT rejected: token revoked");
+                    logger.warn("JWT rejected because the token has been revoked");
                     sendUnauthorized(response);
                     return;
                 }
@@ -77,7 +81,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .orElse(null);
 
                 if (user == null || !user.isEnabled()) {
-                    System.out.println("JWT rejected: user missing or disabled");
+                    logger.warn(
+                            "JWT rejected because the user is missing or disabled"
+                    );
                     sendUnauthorized(response);
                     return;
                 }
@@ -86,21 +92,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(
                                 user,
                                 null,
-                                List.of(new SimpleGrantedAuthority(
-                                        "ROLE_" + user.getRole().name()))
+                                List.of(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_" + user.getRole().name()
+                                        )
+                                )
                         );
 
                 SecurityContextHolder.getContext()
                         .setAuthentication(authentication);
 
-                System.out.println("Authenticated username: " + username);
-                System.out.println("Authorities: "
-                        + authentication.getAuthorities());
+                logger.debug(
+                        "JWT authentication successful for username: {}",
+                        username
+                );
             }
         } catch (JwtException | IllegalArgumentException ex) {
-            System.out.println("JWT ERROR TYPE: "
-                    + ex.getClass().getSimpleName());
-            System.out.println("JWT ERROR MESSAGE: " + ex.getMessage());
+
+            // Do not log the token or exception message, which may expose
+            // sensitive information.
+            logger.warn(
+                    "JWT processing failed: {}",
+                    ex.getClass().getSimpleName()
+            );
 
             sendUnauthorized(response);
             return;
@@ -109,17 +123,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            System.out.println("JWT FILTER FINAL STATUS: "
-                    + response.getStatus());
+            logger.debug(
+                    "Request completed: method={}, path={}, status={}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    response.getStatus()
+            );
         }
     }
 
     private void sendUnauthorized(HttpServletResponse response)
             throws IOException {
+
         SecurityContextHolder.clearContext();
+
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
         response.getWriter().write(
-                "{\"message\":\"Invalid or expired token\"}");
+                "{\"message\":\"Invalid or expired token\"}"
+        );
     }
 }

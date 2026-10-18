@@ -1,7 +1,8 @@
-
 package com.onedao.authentication.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,18 +16,32 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger logger =
+            LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiError> handleResponseStatus(
             ResponseStatusException ex,
             HttpServletRequest request) {
 
-        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        HttpStatus status =
+                HttpStatus.valueOf(ex.getStatusCode().value());
+
+        logger.warn(
+                "API error: status={}, method={}, path={}, message={}",
+                status.value(),
+                request.getMethod(),
+                request.getRequestURI(),
+                ex.getReason()
+        );
 
         ApiError body = new ApiError(
                 LocalDateTime.now(),
                 status.value(),
                 status.getReasonPhrase(),
-                ex.getReason() != null ? ex.getReason() : status.getReasonPhrase(),
+                ex.getReason() != null
+                        ? ex.getReason()
+                        : status.getReasonPhrase(),
                 request.getRequestURI()
         );
 
@@ -41,15 +56,28 @@ public class GlobalExceptionHandler {
         String message = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .map(error ->
+                        error.getField() + ": "
+                                + error.getDefaultMessage())
                 .distinct()
                 .collect(Collectors.joining("; "));
+
+        if (message.isBlank()) {
+            message = "Invalid request data";
+        }
+
+        logger.warn(
+                "Request validation failed: method={}, path={}, errors={}",
+                request.getMethod(),
+                request.getRequestURI(),
+                message
+        );
 
         ApiError body = new ApiError(
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                message.isBlank() ? "Invalid request data" : message,
+                message,
                 request.getRequestURI()
         );
 

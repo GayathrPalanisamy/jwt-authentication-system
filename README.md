@@ -6,6 +6,7 @@ A RESTful backend application built using Java, Spring Boot, Spring Security, JW
 - Secure password hashing using BCrypt
 - JWT-based authentication with token expiration
 - Logout with token revocation
+- Country-based registration restrictions
 - Role-based authorization for Administrator-only settings
 - Product CRUD operations (Create, Read, Update, Delete)
 - PostgreSQL persistence for users and products
@@ -120,7 +121,6 @@ Test cases include:
 - Sensitive configuration values should be supplied securely and excluded from source control.
 
 ## Future Improvements
-- Complete country-based registration restrictions
 - Add pagination, sorting, and filtering to product retrieval
 - Add automated integration and security tests
 - Add OTP verification if required by the final specification
